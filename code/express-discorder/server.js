@@ -18,8 +18,11 @@ app.get("/", (req, res) => res.send(`
 `));
 
 app.post("/github", (req, res) => {
-  const content = ":wave: Hi mom!";
+  const username = req.body.sender.login;
+  const repoName = req.body.repository.name;
+  const content = `:taco: :taco:${username} just starred ${repoName} :taco: :rocket:`;
   const avatarUrl = req.body.sender.avatar_url;
+
   axios
     .post(process.env.DISCORD_WEBHOOK_URL, {
       content: content,
@@ -30,6 +33,32 @@ app.post("/github", (req, res) => {
           },
         },
       ],
+    })
+    .then((discordResponse) => {
+      console.log("Success!");
+      res.status(204).send();
+    })
+    .catch((err) => console.error(`Error sending to Discord: ${err}`));
+});
+
+//post Lora
+app.post("/casauplink", (req, res) =>{
+  console.log(req.body.uplink_message.decoded_payload);
+  const username = "LoRa Draginos Node Temp";
+  const dades = req.body.uplink_message.decoded_payload.Temp;
+  const content = `:rocket:${username} fa ${dades}ºC a casa :rocket:`;
+  //const avatarUrl = req.body.sender.avatar_url;
+
+  axios
+    .post(process.env.DISCORD_WEBHOOK_URL_2, {
+      content: content,
+      /*embeds: [
+        {
+          image: {
+            url: avatarUrl,
+          },
+        },
+      ],*/
     })
     .then((discordResponse) => {
       console.log("Success!");
