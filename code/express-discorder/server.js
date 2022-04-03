@@ -41,7 +41,7 @@ app.post("/github", (req, res) => {
     .catch((err) => console.error(`Error sending to Discord: ${err}`));
 });
 
-//post Lora
+//post Lora-Discord
 app.post("/casauplink", (req, res) =>{
   console.log(req.body.uplink_message.decoded_payload);
   const username = "LoRa Draginos Node Temp";
@@ -65,6 +65,34 @@ app.post("/casauplink", (req, res) =>{
       res.status(204).send();
     })
     .catch((err) => console.error(`Error sending to Discord: ${err}`));
+});
+
+//post LoRa-Postman
+app.post("/postman", async (req, res) =>{
+  console.log(req.body.uplink_message.decoded_payload);
+  const username = "LoRa Draginos Node Temp";
+  const data = req.body.uplink_message.decoded_payload.Temp;
+  //const content = `:rocket:${username} fa ${dades}ºC a casa :rocket:`;
+  //const avatarUrl = req.body.sender.avatar_url;
+  let number = isNaN(data);
+  if (!number){
+    axios
+      .post(process.env.WEBHOOK_URL_3, {
+        content: data,
+        /*embeds: [
+          {
+            image: {
+              url: avatarUrl,
+            },
+          },
+        ],*/
+      })
+      .then((NodeRedResponse) => {
+        console.log("Success!");
+        res.status(200).send();
+      })
+      .catch((err) => console.error(res.status(500).send('Internal server error')));
+  }
 });
 
 app.use((error, req, res, next) => {
