@@ -46,7 +46,7 @@ app.get("/", (req, res) => res.send(`
   </html>
 `));
 
-app.post("/github", (req, res) => {
+/*app.post("/github", (req, res) => {
   const username = req.body.sender.login;
   const repoName = req.body.repository.name;
   const content = `:taco: :taco:${username} just starred ${repoName} :taco: :rocket:`;
@@ -68,7 +68,7 @@ app.post("/github", (req, res) => {
       res.status(204).send();
     })
     .catch((err) => console.error(`Error sending to Discord: ${err}`));
-});
+});*/
 
 //post LoRa-Postman
 app.post("/postman", async (req, res) =>{
@@ -79,7 +79,7 @@ app.post("/postman", async (req, res) =>{
   //const avatarUrl = req.body.sender.avatar_url;
   let number = isNaN(data);
   if (!number){
-    InfluxDBWrite(data);
+    //InfluxDBWrite(data);
     axios
       .post(process.env.WEBHOOK_URL_3, {
         content: data,
@@ -102,36 +102,6 @@ app.post("/postman", async (req, res) =>{
   }
 });
 
-//post LoRa-Chirp
-app.post("/postmanChirp", async (req, res) =>{
-  console.log(req.body.uplink_message.decoded_payload);
-  const username = "LoRa Draginos Node Temp";
-  const data = req.body.uplink_message.decoded_payload.Temp;
-  //const content = `:rocket:${username} fa ${dades}ºC a casa :rocket:`;
-  //const avatarUrl = req.body.sender.avatar_url;
-  let number = isNaN(data);
-  if (!number){
-    axios
-      .post(process.env.WEBHOOK_URL_4, {
-        content: data,
-
-        /*embeds: [
-          {
-            image: {
-              url: avatarUrl,
-            },
-          },
-        ],*/
-      })
-      .then((NodeRedResponse) => {
-        console.log("Success!");
-        //res.status(200).send();
-      })
-      .catch((err) => console.error(res.status(500).send('Internal server error')));
-      
-
-  }
-});
 
 app.use((error, req, res, next) => {
   res.status(500)
