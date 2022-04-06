@@ -1,13 +1,24 @@
 require("dotenv").config();
-const express = require("express");
-const axios = require("axios").default;
+const express = require("express");//Servidor HTTP
+const axios = require("axios").default;//Client HTTP
 
 //Executem el servidor i client
 const app = express();
 const port = 40300;
 
+//Base de dades MySQL
+var mysql      = require('mysql');
+var connection = mysql.createConnection({
+  host     : 'localhost',
+  user     : 'me',
+  password : 'secret',
+  database : 'my_db'
+});
+ 
+connection.connect();
+
 //---------------------------------------
-const {InfluxDB} = require('@influxdata/influxdb-client')
+/*const {InfluxDB} = require('@influxdata/influxdb-client')
 
 // You can generate an API token from the "API Tokens Tab" in the UI
 const token = 'cEG37QZb92xNMRjP9GremXtUN9UZglLXPWrnNiI7EV33aGcwJ4gTivxUE3P1xuCVdQ--sgY9E8BSImmq92vwDg=='
@@ -31,7 +42,7 @@ writeApi
     .catch(e => {
         console.error(e)
         console.log('Finished ERROR')
-    })}
+    })}*/
 //--------------------------------------------
 
 app.use(express.json());
@@ -101,6 +112,31 @@ app.post("/postman", async (req, res) =>{
 
   }
 });
+
+//Post LoRa
+app.post("/LoRa", async (req, res) =>{
+  console.log(req.body.uplink_message.decoded_payload);
+  const username = "LoRa Draginos";
+  const LED = req.body.uplink_message.decoded_payload.LED;
+  const Data = req.body.uplink_message.decoded_payload.data;
+  //const content = `:rocket:${username} fa ${dades}ºC a casa :rocket:`;
+  //const avatarUrl = req.body.sender.avatar_url;
+  res.status(200).send();
+})
+
+
+//----------Repetició--------
+// Aquesta funció mira la taula on hi han registrats tots el Sensors i envia l'ordre per aquells necessaris d'activar el LED
+/*function RevDevEUI(){
+  // do whatever you like here
+
+  setTimeout(RevDevEUI, 30000);//Cada 30 segons
+}
+
+RevDevEUI();*/
+
+//---------------------------
+
 
 
 app.use((error, req, res, next) => {
