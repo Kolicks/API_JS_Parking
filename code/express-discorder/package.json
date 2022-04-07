@@ -16,9 +16,7 @@
     "express": "^4.17.1",
     "mqtt": "^4.3.7",
     "mysql": "^2.18.1",
+    "ngrok": "^4.3.1",
     "nodemon": "^2.0.15"
-  },
-  "devDependencies": {
-    
   }
 }
