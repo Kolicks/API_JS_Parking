@@ -6,7 +6,7 @@ const axios = require("axios").default;//Client HTTP
 const app = express();
 const port = 40300;
 
-//const bodyParser = require('body-parser');
+const bodyParser = require('body-parser');
 
 //Base de dades MySQL
 var mysql      = require('mysql');
@@ -92,16 +92,17 @@ app.post("/postman", async (req, res) =>{
   }
 });
 
-//Post LoRa
+//Post missatges rebuts de la API LoRa
 app.post("/sensor", async (req, res) =>{
-  console.log(req.body.uplink_message.decoded_payload);
+  /*console.log(req.body.uplink_message.decoded_payload);
   console.log(req.body.uplink_message.received_at);
   console.log(req.body.end_device_ids.device_id);
-  console.log('////////////////////////////////////////////////');
+  console.log('////////////////////////////////////////////////');*/
+  //Mirem si és sensor Cotxe o actuador LED
 
+  //Preparem dades del sensor cotxe
   const sql = 'INSERT INTO Sensor_Cotxe SET ?';
-
-  const cotxeObj = {
+  const cotxeObj = { 
     Data: req.body.uplink_message.received_at,
     DevEUI: req.body.end_device_ids.device_id,
     Parking_status: req.body.uplink_message.decoded_payload.Parking_status,
@@ -114,20 +115,75 @@ app.post("/sensor", async (req, res) =>{
     Y_Axis: req.body.uplink_message.decoded_payload.Y_Axis,
     Z_Axis: req.body.uplink_message.decoded_payload.Z_Axis,
   }
-
-connection.query(sql, cotxeObj, error =>{
+  //Guardem a la DB Sensor_Cotxe
+  connection.query(sql, cotxeObj, error =>{
   if (error) throw error;
-  console.log('creat');
-  res.send('sensor rebut');
-
-
-});
+  console.log('Sensor cotxe guardat');
+  });
 
   //const username = "LoRa Draginos";
   //const LED = req.body.uplink_message.decoded_payload.LED;
   //const Data = req.body.uplink_message.decoded_payload.data;
   //const content = `:rocket:${username} fa ${dades}ºC a casa :rocket:`;
   //const avatarUrl = req.body.sender.avatar_url;
+  res.status(200).send();
+})
+
+//Post Creació Postman dels sensors
+app.post("/registre", async (req, res) =>{
+  //console.log(req.body.end_device_ids.Cotxe);
+  //console.log(req.body.end_device_ids.LED);
+  //Mirem si ja existeix
+  const cotxe = req.body.EUICotxe;
+  var c_cotxe = '1';
+  const led = req.body.EUILED;
+  var c_led = '1';
+  var resultat = 0;
+  const sql = 'SELECT * FROM Gestio_Cotxe WHERE DevEUI_cotxe = ' + mysql.escape(cotxe) + 'OR' + mysql.escape(led);
+  connection.query(sql, (error, result) =>{
+    if (error) throw error;
+    if (result.lenght > 0) {
+      resultat = 1;
+      c_cotxe = RowDataPacket.DevEUI_cotxe;
+      c_led = RowDataPacket.DevEUI_led;
+      console.log(c_cotxe);
+      console.log(c_led);
+    } else {
+      resultat = 0;
+    }
+    
+    console.log(c_cotxe);
+    console.log(c_led);
+    console.log(result);
+    res.send(result);
+    });
+
+  /*if (resultat == 0) {
+    //Preparem dades dela DB gestió cotxe
+    const sql2 = `INSERT INTO Gestio_Cotxe SET ?`;
+    const cotxeObj = { 
+      DevEUI_cotxe: req.body.end_device_ids.Cotxe,
+      Parking_status: 0,
+      Downlinks_sent: 0,
+      DevEUI_led:req.body.end_device_ids.LED,
+      Estat_led:0,
+      
+    }
+    //Guardem a la DB Sensor_Cotxe
+    connection.query(sql, cotxeObj, error =>{
+    if (error) throw error;
+    console.log('REGISTRAT!');
+    });
+  }*/
+  if (c_led == led & c_cotxe == cotxe) {
+    console.log('Sensor del cotxe i led registrats!');
+  }else if (c_cotxe == cotxe & c_led != led) {
+    console.log('Sensor cotxe ja registrat!');
+  }else if (c_led == led & c_cotxe != cotxe) {
+    console.log('Actuador LED ja registrat!');
+  }
+
+
   res.status(200).send();
 })
 
