@@ -131,61 +131,62 @@ app.post("/sensor", async (req, res) =>{
 
 //Post Creació Postman dels sensors
 app.post("/registre", async (req, res) =>{
-  //console.log(req.body.end_device_ids.Cotxe);
-  //console.log(req.body.end_device_ids.LED);
-  //Mirem si ja existeix
-  const cotxe = req.body.EUICotxe;
-  var c_cotxe = '1';
-  const led = req.body.EUILED;
-  var c_led = '1';
-  var resultat = 0;
-  const sql = 'SELECT * FROM Gestio_Cotxe WHERE DevEUI_cotxe = ' + mysql.escape(cotxe) + 'OR' + mysql.escape(led);
-  connection.query(sql, (error, result) =>{
-    if (error) throw error;
-    if (result.lenght > 0) {
-      resultat = 1;
-      c_cotxe = RowDataPacket.DevEUI_cotxe;
-      c_led = RowDataPacket.DevEUI_led;
-      console.log(c_cotxe);
-      console.log(c_led);
-    } else {
-      resultat = 0;
-    }
-    
-    console.log(c_cotxe);
-    console.log(c_led);
-    console.log(result);
-    res.send(result);
-    });
 
-  /*if (resultat == 0) {
-    //Preparem dades dela DB gestió cotxe
-    const sql2 = `INSERT INTO Gestio_Cotxe SET ?`;
-    const cotxeObj = { 
-      DevEUI_cotxe: req.body.end_device_ids.Cotxe,
-      Parking_status: 0,
-      Downlinks_sent: 0,
-      DevEUI_led:req.body.end_device_ids.LED,
-      Estat_led:0,
-      
+  //Mirem si ja existeix
+  let cotxe = req.body.EUICotxe;
+  let c_cotxe = 'A';
+
+  let led = req.body.EUILED;
+  let c_led = 'A';
+
+  //Al no ser async espera a recopilar l'informació i llavors decideix
+  function Logica(c_cotxe, c_led){
+    if (c_cotxe != cotxe & c_led != led) {
+      //Preparem dades dela DB gestió cotxe
+      const sql2 = `INSERT INTO Gestio_Cotxe SET ?`;
+      const cotxeObj = { 
+        DevEUI_cotxe: req.body.EUICotxe,
+        Parking_status: 0,
+        Downlinks_sent: 0,
+        DevEUI_led:req.body.EUILED,
+        Estat_led:0, 
+      }
+      //Guardem a la DB Sensor_Cotxe
+      connection.query(sql2, cotxeObj, error =>{
+      if (error) throw error;
+      console.log('REGISTRAT!');
+      });
     }
-    //Guardem a la DB Sensor_Cotxe
-    connection.query(sql, cotxeObj, error =>{
-    if (error) throw error;
-    console.log('REGISTRAT!');
-    });
-  }*/
-  if (c_led == led & c_cotxe == cotxe) {
-    console.log('Sensor del cotxe i led registrats!');
-  }else if (c_cotxe == cotxe & c_led != led) {
-    console.log('Sensor cotxe ja registrat!');
-  }else if (c_led == led & c_cotxe != cotxe) {
-    console.log('Actuador LED ja registrat!');
+    else if ( c_cotxe == cotxe & c_led == led ) {
+      console.log('Sensor del cotxe i led registrats!');
+    }
+    else if ( c_cotxe == cotxe & c_led != led ) {
+      console.log('Sensor cotxe ja registrat!');
+    }
+    else if ( c_cotxe != cotxe & c_led == led ) {
+      console.log('Actuador LED ja registrat!');
+    }
+    else {
+      console.log('Error desconegut');
+    }
   }
 
+  //Preguntem a la base de dades si ja existeix algun camp
+  const sql = 'SELECT * FROM Gestio_Cotxe WHERE DevEUI_cotxe = ' + mysql.escape(cotxe) + 'OR DevEUI_led  = ' + mysql.escape(led);
+  connection.query(sql, (error, result) =>{
+    if (error) throw error;
+    if (result.length > 0){
+    c_cotxe = result[0].DevEUI_cotxe;
+    c_led = result[0].DevEUI_led;
+    }
+    console.log(c_cotxe);
+    console.log(c_led);
+    Logica(c_cotxe,c_led);
+  });
 
   res.status(200).send();
 })
+
 
 
 //----------Repetició--------
