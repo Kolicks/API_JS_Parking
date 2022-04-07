@@ -6,44 +6,23 @@ const axios = require("axios").default;//Client HTTP
 const app = express();
 const port = 40300;
 
+//const bodyParser = require('body-parser');
+
 //Base de dades MySQL
 var mysql      = require('mysql');
+
 var connection = mysql.createConnection({
   host     : 'localhost',
-  user     : 'me',
-  password : 'secret',
-  database : 'my_db'
+  user     : 'root',
+  password : '',
+  database : 'mydb'
 });
  
-connection.connect();
+connection.connect(error => {
+  if (error) throw error;
+  console.log('Database server running!!!');
+});
 
-//---------------------------------------
-/*const {InfluxDB} = require('@influxdata/influxdb-client')
-
-// You can generate an API token from the "API Tokens Tab" in the UI
-const token = 'cEG37QZb92xNMRjP9GremXtUN9UZglLXPWrnNiI7EV33aGcwJ4gTivxUE3P1xuCVdQ--sgY9E8BSImmq92vwDg=='
-const org = 'UdG'
-const bucket = 'Temp'
-
-function InfluxDBWrite(data){
-const client = new InfluxDB({url: 'http://localhost:8086', token: token})
-const {Point} = require('@influxdata/influxdb-client')
-const writeApi = client.getWriteApi(org, bucket)
-
-//Escrivim al Influx
-//writeApi.useDefaultTags({host: 'host1'})
-const point = new Point('Temperatura').floatField('Temp', data)
-writeApi.writePoint(point)
-writeApi
-    .close()
-    .then(() => {
-        console.log('FINISHED')
-    })
-    .catch(e => {
-        console.error(e)
-        console.log('Finished ERROR')
-    })}*/
-//--------------------------------------------
 
 app.use(express.json());
 
@@ -114,11 +93,39 @@ app.post("/postman", async (req, res) =>{
 });
 
 //Post LoRa
-app.post("/LoRa", async (req, res) =>{
+app.post("/sensor", async (req, res) =>{
   console.log(req.body.uplink_message.decoded_payload);
-  const username = "LoRa Draginos";
-  const LED = req.body.uplink_message.decoded_payload.LED;
-  const Data = req.body.uplink_message.decoded_payload.data;
+  console.log(req.body.uplink_message.received_at);
+  console.log(req.body.end_device_ids.device_id);
+  console.log('////////////////////////////////////////////////');
+
+  const sql = 'INSERT INTO Sensor_Cotxe SET ?';
+
+  const cotxeObj = {
+    Data: req.body.uplink_message.received_at,
+    DevEUI: req.body.end_device_ids.device_id,
+    Parking_status: req.body.uplink_message.decoded_payload.Parking_status,
+    Battery_Voltage: req.body.uplink_message.decoded_payload.Battery_Voltage,
+    Direction: req.body.uplink_message.decoded_payload.Direction,
+    Frame_type: req.body.uplink_message.decoded_payload.Frame_type,
+    Sens_type: req.body.uplink_message.decoded_payload.Sens_type,
+    Temp: req.body.uplink_message.decoded_payload.Temp,
+    X_Axis: req.body.uplink_message.decoded_payload.X_Axis,
+    Y_Axis: req.body.uplink_message.decoded_payload.Y_Axis,
+    Z_Axis: req.body.uplink_message.decoded_payload.Z_Axis,
+  }
+
+connection.query(sql, cotxeObj, error =>{
+  if (error) throw error;
+  console.log('creat');
+  res.send('sensor rebut');
+
+
+});
+
+  //const username = "LoRa Draginos";
+  //const LED = req.body.uplink_message.decoded_payload.LED;
+  //const Data = req.body.uplink_message.decoded_payload.data;
   //const content = `:rocket:${username} fa ${dades}ºC a casa :rocket:`;
   //const avatarUrl = req.body.sender.avatar_url;
   res.status(200).send();
