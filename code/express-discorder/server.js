@@ -85,7 +85,7 @@ app.post("/sensor", async (req, res) =>{
         //Guardem a la DB Gestio_Cotxe
         connection.query(sql, error =>{
         if (error) throw error;
-        //console.log('Actuador led actualitzat');
+        console.log('Actuador led actualitzat');
         });
     }
   }
@@ -175,7 +175,7 @@ app.post("/downlink", async (req, res) =>{
 
 
 // Aquesta funció mira la taula on hi han registrats tots el Sensors i envia l'ordre per aquells necessaris d'activar el LED
-const BuffRev = setInterval(RevDevEUI, 30000);//Cada 30 segons
+const BuffRev = setInterval(RevDevEUI, 60000);//Cada 30 segons
 
 //Funció que revisa i  crea la llista que envia els downlinks
 function RevDevEUI(){
@@ -198,38 +198,69 @@ function RevDevEUI(){
 
 //Funció que mira si ja s'ha enviat Downlink o si el led està Activat
 function BufferSeleccio(index, llista){
-  let arrcotxe = []; // Array cotxes
+  let arrcotxe = []; // Array cotxes i leds assosiats
   let arrdwlnk = []; // Array leds
   let arrdate = []; // Array dates dels cotxes
+  //Creem les llistes per buscar temps i preparar downlinks
   for (let i = 0; i < index; i++) {
-    if (llista[i].Parking_Status == 1 & llista[i].Estat_led == 0 & llista[i].Downlinks_sent == 0){
-      arrdwlnk[i] = llista[i].DevEUI_led;
-      arrcotxe[i] = llista[i].DevEUI_cotxe ;
-    };
+    arrcotxe[i] = llista[i].DevEUI_cotxe; 
+    arrdwlnk[i] = llista[i].DevEUI_led;
   };
-  //console.log(arrdwlnk);
+  //console.log(arrcotxe[0]);
   //console.log(arrcotxe[0]);
 
   // Un cop sabem la llista dels sensors busquem quins han sobrepassat el temps
-  const sql = 'SELECT Data FROM Sensor_Cotxe WHERE DevEUI = ' + mysql.escape(arrcotxe[0]) + ' AND Parking_status = 1 ORDER BY Data DESC LIMIT 1';
-  connection.query(sql, (error, result) =>{
-    if (error) throw error;
-    if (result.length > 0){
-      let index = result.length;
-      arrdate = result;
+  for (let i = 0; i < index; i++) {
+    let eui = arrcotxe[i];
+    const sql = 'SELECT Data FROM Sensor_Cotxe WHERE DevEUI = ' + mysql.escape(eui) + ' AND Parking_status = 1 ORDER BY Data DESC LIMIT 1';
+    connection.query(sql, (error, result) =>{
+      if (error) throw error;
+      if (result.length > 0){
+        let index = result.length;
+        arrdate[i] = result[0].Data;
+  
+        const act = new Date(); // Hora actual
+        const t_sens = new Date(arrdate[i]); // Hora del sensor
 
-      const act = new Date(); // Hora actual
-      const t_sens = new Date(arrdate[0].Data); // Hora del sensor
-      //console.log(t_sens);
-      //console.log((act - t_sens));
-      let minuts = (act - t_sens)/60000;
-      
-      //Mirem si han passat els minuts
-      if (minuts >= 3){
-        console.log(minuts);   
-      };
-    }
-  });
+        //console.log((act - t_sens));
+        let minuts = (act - t_sens)/60000;
+        
+        //Mirem si han passat els minuts
+        if (minuts > 10){
+          console.log('Downlink enviat');
+          //console.log(arrcotxe[i]);
+          //console.log(arrdwlnk[i]);
+          const sended = 'AQ==';
+          axios({
+            headers: {'Authorization': 'Bearer NNSXS.5SFWX4EHPY67ECSZHX26BVPRIPDVN7ZZIZV77KA.DPW4CBGI3TU2GF3BOY2DY7OOWPKBCDFXLHTUONZFOLYNZE25AYZA',
+            'Content-Type': 'application/json',
+            'User-Agent': 'proves-cotxe/v3'},
+            method: 'post',
+            url: 'https://eu1.cloud.thethings.network/api/v3/as/applications/proves-cotxe/webhooks/api-webhook-udg/devices/' + arrdwlnk[i] + '/down/push',
+            data: {"downlinks": [{
+              "frm_payload": sended,
+              "f_port": 15,
+              "priority":"NORMAL"
+            }]
+            }
+
+          });
+
+          //Finalment actualitzem el valor Downlink
+          const sql = 'UPDATE Gestio_Cotxe SET Downlinks_sent  = 1 WHERE DevEUI_led =' + mysql.escape(arrdwlnk[i]);
+        
+          //Guardem a la DB Gestio_Cotxe
+          connection.query(sql, error =>{
+          if (error) throw error;
+          console.log('Downlink pel actuador ' + arrdwlnk[i] + ' actualitzat');
+          });
+
+
+        };
+      }
+    });
+  }
+  
   /*const date = new Date();
   console.log(date -Date.now());*/
 
