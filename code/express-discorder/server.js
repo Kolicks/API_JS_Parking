@@ -26,6 +26,7 @@ connection.connect(error => {
 
 app.use(express.json());
 
+//Pàgina principal
 app.get("/", (req, res) => res.send(`
   <html>
     <head><title>Success!</title></head>
@@ -35,97 +36,60 @@ app.get("/", (req, res) => res.send(`
     </body>
   </html>
 `));
-//Hola
-/*app.post("/github", (req, res) => {
-  const username = req.body.sender.login;
-  const repoName = req.body.repository.name;
-  const content = `:taco: :taco:${username} just starred ${repoName} :taco: :rocket:`;
-  const avatarUrl = req.body.sender.avatar_url;
-
-  axios
-    .post(process.env.DISCORD_WEBHOOK_URL, {
-      content: content,
-      embeds: [
-        {
-          image: {
-            url: avatarUrl,
-          },
-        },
-      ],
-    })
-    .then((discordResponse) => {
-      console.log("Success!");
-      res.status(204).send();
-    })
-    .catch((err) => console.error(`Error sending to Discord: ${err}`));
-});*/
-
-//post LoRa-Postman
-app.post("/postman", async (req, res) =>{
-  console.log(req.body.uplink_message.decoded_payload);
-  const username = "LoRa Draginos Node Temp";
-  const data = req.body.uplink_message.decoded_payload.Temp;
-  //const content = `:rocket:${username} fa ${dades}ºC a casa :rocket:`;
-  //const avatarUrl = req.body.sender.avatar_url;
-  let number = isNaN(data);
-  if (!number){
-    //InfluxDBWrite(data);
-    axios
-      .post(process.env.WEBHOOK_URL_3, {
-        content: data,
-
-        /*embeds: [
-          {
-            image: {
-              url: avatarUrl,
-            },
-          },
-        ],*/
-      })
-      .then((NodeRedResponse) => {
-        console.log("Success!");
-        res.status(200).send();
-      })
-      .catch((err) => console.error(res.status(500).send('Internal server error')));
-      
-
-  }
-});
 
 //Post missatges rebuts de la API LoRa
 app.post("/sensor", async (req, res) =>{
-  /*console.log(req.body.uplink_message.decoded_payload);
-  console.log(req.body.uplink_message.received_at);
-  console.log(req.body.end_device_ids.device_id);
-  console.log('////////////////////////////////////////////////');*/
+
   //Mirem si és sensor Cotxe o actuador LED
+  if (req.body.uplink_message.hasOwnProperty('decoded_payload')){
+    let sensor = req.body.uplink_message.decoded_payload.Type_Sens;
+    if (sensor == 1){
+      //Preparem dades del sensor cotxe
+      const sql = 'INSERT INTO Sensor_Cotxe SET ?';
+      const cotxeObj = { 
+        Data: req.body.uplink_message.received_at,
+        DevEUI: req.body.end_device_ids.device_id,
+        Parking_status: req.body.uplink_message.decoded_payload.Parking_status,
+        Battery_Voltage: req.body.uplink_message.decoded_payload.Battery_Voltage,
+        Direction: req.body.uplink_message.decoded_payload.Direction,
+        Frame_type: req.body.uplink_message.decoded_payload.Frame_type,
+        Sens_type: req.body.uplink_message.decoded_payload.Sens_type,
+        Temp: req.body.uplink_message.decoded_payload.Temp,
+        X_Axis: req.body.uplink_message.decoded_payload.X_Axis,
+        Y_Axis: req.body.uplink_message.decoded_payload.Y_Axis,
+        Z_Axis: req.body.uplink_message.decoded_payload.Z_Axis,
+      }
+      //Guardem a la DB Sensor_Cotxe
+      connection.query(sql, cotxeObj, error =>{
+      if (error) throw error;
+      console.log('Sensor cotxe rebut');
+      });
 
-  //Preparem dades del sensor cotxe
-  const sql = 'INSERT INTO Sensor_Cotxe SET ?';
-  const cotxeObj = { 
-    Data: req.body.uplink_message.received_at,
-    DevEUI: req.body.end_device_ids.device_id,
-    Parking_status: req.body.uplink_message.decoded_payload.Parking_status,
-    Battery_Voltage: req.body.uplink_message.decoded_payload.Battery_Voltage,
-    Direction: req.body.uplink_message.decoded_payload.Direction,
-    Frame_type: req.body.uplink_message.decoded_payload.Frame_type,
-    Sens_type: req.body.uplink_message.decoded_payload.Sens_type,
-    Temp: req.body.uplink_message.decoded_payload.Temp,
-    X_Axis: req.body.uplink_message.decoded_payload.X_Axis,
-    Y_Axis: req.body.uplink_message.decoded_payload.Y_Axis,
-    Z_Axis: req.body.uplink_message.decoded_payload.Z_Axis,
+      //Actualitzem la DB Gestio_Cotxe
+      const sql2 = 'UPDATE Gestio_Cotxe SET Parking_Status = ' + mysql.escape(cotxeObj.Parking_status) + ' WHERE DevEUI_cotxe =' + mysql.escape(cotxeObj.DevEUI);
+      //Guardem a la DB Gestio_Cotxe
+      connection.query(sql2, error =>{
+      if (error) throw error;
+      console.log('Sensor cotxe actualitzat');
+      });
+
+    }
+    else if (sensor == 2){
+      
+        let ledEUI =req.body.end_device_ids.device_id;
+        const ledObj = { Estat_led: req.body.uplink_message.decoded_payload.LED }
+        //console.log(ledObj);
+        //Preparem dades del sensor cotxe
+        const sql = 'UPDATE Gestio_Cotxe SET Estat_led =' + mysql.escape(ledObj.Estat_led) + ' WHERE DevEUI_led =' + mysql.escape(ledEUI);
+        
+        //Guardem a la DB Gestio_Cotxe
+        connection.query(sql, error =>{
+        if (error) throw error;
+        //console.log('Actuador led actualitzat');
+        });
+    }
   }
-  //Guardem a la DB Sensor_Cotxe
-  connection.query(sql, cotxeObj, error =>{
-  if (error) throw error;
-  console.log('Sensor cotxe guardat');
-  });
 
-  //const username = "LoRa Draginos";
-  //const LED = req.body.uplink_message.decoded_payload.LED;
-  //const Data = req.body.uplink_message.decoded_payload.data;
-  //const content = `:rocket:${username} fa ${dades}ºC a casa :rocket:`;
-  //const avatarUrl = req.body.sender.avatar_url;
   res.status(200).send();
 })
 
@@ -179,8 +143,6 @@ app.post("/registre", async (req, res) =>{
     c_cotxe = result[0].DevEUI_cotxe;
     c_led = result[0].DevEUI_led;
     }
-    console.log(c_cotxe);
-    console.log(c_led);
     Logica(c_cotxe,c_led);
   });
 
@@ -188,16 +150,60 @@ app.post("/registre", async (req, res) =>{
 })
 
 
+//Prova downlink lora
+// NNSXS.5SFWX4EHPY67ECSZHX26BVPRIPDVN7ZZIZV77KA.DPW4CBGI3TU2GF3BOY2DY7OOWPKBCDFXLHTUONZFOLYNZE25AYZA
+// 1 = AQ== ------ 0 = AA==
+app.get("/downlink", async (req, res) =>{
+  let hola = [1];
+  axios({
+    headers: {'Authorization': 'Bearer NNSXS.5SFWX4EHPY67ECSZHX26BVPRIPDVN7ZZIZV77KA.DPW4CBGI3TU2GF3BOY2DY7OOWPKBCDFXLHTUONZFOLYNZE25AYZA',
+    'Content-Type': 'application/json',
+    'User-Agent': 'proves-cotxe/v3'},
+    method: 'post',
+    url: 'https://eu1.cloud.thethings.network/api/v3/as/applications/proves-cotxe/webhooks/api-webhook-udg/devices/' + 'eui-70b3d57ed004da1c' + '/down/push',
+    data: {"downlinks": [{
+      "frm_payload":"AA==",
+      "f_port": 15,
+      "priority":"NORMAL"
+    }]
+    }
+  });
+  res.status(200).send();
+})
 
 //----------Repetició--------
+
+
 // Aquesta funció mira la taula on hi han registrats tots el Sensors i envia l'ordre per aquells necessaris d'activar el LED
-/*function RevDevEUI(){
-  // do whatever you like here
+const BuffRev = setInterval(RevDevEUI, 10000);//Cada 10 segons
 
-  setTimeout(RevDevEUI, 30000);//Cada 30 segons
-}
+//Funció que revisa i  crea la llista que envia els downlinks
+function RevDevEUI(){
+  let indxbuff = 0;
+  let arrsensor = [];
+  const sql = 'SELECT * FROM Gestio_Cotxe';
+  connection.query(sql, (error, result) =>{
+    if (error) throw error;
+    if (result.length > 0){
+      indxbuff = result.length;
+      arrsensor = result;
+      //console.log(arrsensor[0]);
+      //console.log(indxbuff);
+      //console.log(arrsensor);
+    }
+    BufferSeleccio(indxbuff, arrsensor);
+  });
+};
 
-RevDevEUI();*/
+function BufferSeleccio(index, llista){
+  for (let i = 0; i < index; i++) {
+    //console.log(llista[i]);
+    //if (llista[i].Parking_Status == 1 & llista[i].Estat_led == 0){};
+  }
+};
+
+//Funció integrada a RevDevEUI que envia els downlinks
+RevDevEUI();
 
 //---------------------------
 
