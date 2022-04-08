@@ -153,8 +153,8 @@ app.post("/registre", async (req, res) =>{
 //Prova downlink lora
 // NNSXS.5SFWX4EHPY67ECSZHX26BVPRIPDVN7ZZIZV77KA.DPW4CBGI3TU2GF3BOY2DY7OOWPKBCDFXLHTUONZFOLYNZE25AYZA
 // 1 = AQ== ------ 0 = AA==
-app.get("/downlink", async (req, res) =>{
-  let hola = [1];
+app.post("/downlink", async (req, res) =>{
+  const sended = 'AA==';
   axios({
     headers: {'Authorization': 'Bearer NNSXS.5SFWX4EHPY67ECSZHX26BVPRIPDVN7ZZIZV77KA.DPW4CBGI3TU2GF3BOY2DY7OOWPKBCDFXLHTUONZFOLYNZE25AYZA',
     'Content-Type': 'application/json',
@@ -162,7 +162,7 @@ app.get("/downlink", async (req, res) =>{
     method: 'post',
     url: 'https://eu1.cloud.thethings.network/api/v3/as/applications/proves-cotxe/webhooks/api-webhook-udg/devices/' + 'eui-70b3d57ed004da1c' + '/down/push',
     data: {"downlinks": [{
-      "frm_payload":"AA==",
+      "frm_payload": sended,
       "f_port": 15,
       "priority":"NORMAL"
     }]
@@ -175,13 +175,13 @@ app.get("/downlink", async (req, res) =>{
 
 
 // Aquesta funció mira la taula on hi han registrats tots el Sensors i envia l'ordre per aquells necessaris d'activar el LED
-const BuffRev = setInterval(RevDevEUI, 10000);//Cada 10 segons
+const BuffRev = setInterval(RevDevEUI, 30000);//Cada 30 segons
 
 //Funció que revisa i  crea la llista que envia els downlinks
 function RevDevEUI(){
   let indxbuff = 0;
   let arrsensor = [];
-  const sql = 'SELECT * FROM Gestio_Cotxe';
+  const sql = 'SELECT * FROM Gestio_Cotxe WHERE Parking_Status = 1 AND Downlinks_sent = 0 AND Estat_led = 0 ';
   connection.query(sql, (error, result) =>{
     if (error) throw error;
     if (result.length > 0){
@@ -193,13 +193,46 @@ function RevDevEUI(){
     }
     BufferSeleccio(indxbuff, arrsensor);
   });
+
 };
 
+//Funció que mira si ja s'ha enviat Downlink o si el led està Activat
 function BufferSeleccio(index, llista){
+  let arrcotxe = []; // Array cotxes
+  let arrdwlnk = []; // Array leds
+  let arrdate = []; // Array dates dels cotxes
   for (let i = 0; i < index; i++) {
-    //console.log(llista[i]);
-    //if (llista[i].Parking_Status == 1 & llista[i].Estat_led == 0){};
-  }
+    if (llista[i].Parking_Status == 1 & llista[i].Estat_led == 0 & llista[i].Downlinks_sent == 0){
+      arrdwlnk[i] = llista[i].DevEUI_led;
+      arrcotxe[i] = llista[i].DevEUI_cotxe ;
+    };
+  };
+  //console.log(arrdwlnk);
+  //console.log(arrcotxe[0]);
+
+  // Un cop sabem la llista dels sensors busquem quins han sobrepassat el temps
+  const sql = 'SELECT Data FROM Sensor_Cotxe WHERE DevEUI = ' + mysql.escape(arrcotxe[0]) + ' AND Parking_status = 1 ORDER BY Data DESC LIMIT 1';
+  connection.query(sql, (error, result) =>{
+    if (error) throw error;
+    if (result.length > 0){
+      let index = result.length;
+      arrdate = result;
+
+      const act = new Date(); // Hora actual
+      const t_sens = new Date(arrdate[0].Data); // Hora del sensor
+      //console.log(t_sens);
+      //console.log((act - t_sens));
+      let minuts = (act - t_sens)/60000;
+      
+      //Mirem si han passat els minuts
+      if (minuts >= 3){
+        console.log(minuts);   
+      };
+    }
+  });
+  /*const date = new Date();
+  console.log(date -Date.now());*/
+
 };
 
 //Funció integrada a RevDevEUI que envia els downlinks
