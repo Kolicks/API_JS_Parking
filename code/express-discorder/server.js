@@ -267,6 +267,7 @@ function BufferSeleccio(index, llista){
 };
 
 // Funció que revisa i crea els downlinks de DESACTIVACIÓ
+//Aquesta funció no contempla el cas PS = 0 AND D_s = 1 AND E_l = 0 Espera que el LED dongui resposta E_l = 1
 function RevDevEUIdesac(){
   let indxbuff = 0;
   let arrsensor = [];
