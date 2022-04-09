@@ -85,7 +85,7 @@ app.post("/sensor", async (req, res) =>{
         //Guardem a la DB Gestio_Cotxe
         connection.query(sql, error =>{
         if (error) throw error;
-        console.log('Actuador led actualitzat');
+        //console.log('Actuador ' + ledEUI + ' led actualitzat');
         });
     }
   }
@@ -151,7 +151,6 @@ app.post("/registre", async (req, res) =>{
 
 
 //Prova downlink lora
-// NNSXS.5SFWX4EHPY67ECSZHX26BVPRIPDVN7ZZIZV77KA.DPW4CBGI3TU2GF3BOY2DY7OOWPKBCDFXLHTUONZFOLYNZE25AYZA
 // 1 = AQ== ------ 0 = AA==
 app.post("/downlink", async (req, res) =>{
   const sended = 'AA==';
@@ -175,9 +174,10 @@ app.post("/downlink", async (req, res) =>{
 
 
 // Aquesta funció mira la taula on hi han registrats tots el Sensors i envia l'ordre per aquells necessaris d'activar el LED
-const BuffRev = setInterval(RevDevEUI, 60000);//Cada 30 segons
+const BuffRev = setInterval(RevDevEUI, 30000);//Cada 30 segons
+const BuffRevDesac = setInterval(RevDevEUIdesac, 30000);//Cada 30 segons
 
-//Funció que revisa i  crea la llista que envia els downlinks
+//Funció que revisa i  crea la llista que envia els downlinks d'ACTIVACIÓ
 function RevDevEUI(){
   let indxbuff = 0;
   let arrsensor = [];
@@ -196,7 +196,7 @@ function RevDevEUI(){
 
 };
 
-//Funció que mira si ja s'ha enviat Downlink o si el led està Activat
+//Funció que mira si ja s'ha enviat Downlink o si el led està ACTIVAT
 function BufferSeleccio(index, llista){
   let arrcotxe = []; // Array cotxes i leds assosiats
   let arrdwlnk = []; // Array leds
@@ -206,8 +206,8 @@ function BufferSeleccio(index, llista){
     arrcotxe[i] = llista[i].DevEUI_cotxe; 
     arrdwlnk[i] = llista[i].DevEUI_led;
   };
-  //console.log(arrcotxe[0]);
-  //console.log(arrcotxe[0]);
+
+  //console.log(arrcotxe);
 
   // Un cop sabem la llista dels sensors busquem quins han sobrepassat el temps
   for (let i = 0; i < index; i++) {
@@ -226,7 +226,7 @@ function BufferSeleccio(index, llista){
         let minuts = (act - t_sens)/60000;
         
         //Mirem si han passat els minuts
-        if (minuts > 10){
+        if (minuts > 1){
           console.log('Downlink enviat');
           //console.log(arrcotxe[i]);
           //console.log(arrdwlnk[i]);
@@ -266,8 +266,63 @@ function BufferSeleccio(index, llista){
 
 };
 
+// Funció que revisa i crea els downlinks de DESACTIVACIÓ
+function RevDevEUIdesac(){
+  let indxbuff = 0;
+  let arrsensor = [];
+  const sql = 'SELECT * FROM Gestio_Cotxe WHERE Parking_Status = 0 AND Downlinks_sent = 1 AND Estat_led = 1 ';
+  connection.query(sql, (error, result) =>{
+    if (error) throw error;
+    if (result.length > 0){
+      indxbuff = result.length;
+      arrsensor = result;
+      //console.log(arrsensor[0]);
+      //console.log(indxbuff);
+      //console.log(arrsensor);
+    }
+    BufferSeleccioDesac(indxbuff, arrsensor);
+  });
+};
+
+//Funció eliminatòria i downlink desactivació
+function BufferSeleccioDesac(index, llista){
+  let arrcotxe = []; // Array cotxes i leds assosiats
+  let arrdwlnk = []; // Array leds
+  //let arrdate = []; // Array dates dels cotxes
+  //Creem les llistes per buscar temps i preparar downlinks
+  for (let i = 0; i < index; i++) {
+    arrcotxe[i] = llista[i].DevEUI_cotxe; 
+    arrdwlnk[i] = llista[i].DevEUI_led;
+    const sended = 'AA==';
+    axios({
+      headers: {'Authorization': 'Bearer NNSXS.5SFWX4EHPY67ECSZHX26BVPRIPDVN7ZZIZV77KA.DPW4CBGI3TU2GF3BOY2DY7OOWPKBCDFXLHTUONZFOLYNZE25AYZA',
+      'Content-Type': 'application/json',
+      'User-Agent': 'proves-cotxe/v3'},
+      method: 'post',
+      url: 'https://eu1.cloud.thethings.network/api/v3/as/applications/proves-cotxe/webhooks/api-webhook-udg/devices/' + arrdwlnk[i] + '/down/push',
+      data: {"downlinks": [{
+        "frm_payload": sended,
+        "f_port": 15,
+        "priority":"NORMAL"
+      }]
+      }
+    });
+    //Finalment actualitzem el valor Downlink
+    const sql = 'UPDATE Gestio_Cotxe SET Downlinks_sent  = 0 WHERE DevEUI_led =' + mysql.escape(arrdwlnk[i]);
+    //Guardem a la DB Gestio_Cotxe
+    connection.query(sql, error =>{
+    if (error) throw error;
+    console.log('Downlink Desactivació pel actuador ' + arrdwlnk[i] + ' actualitzat');
+    });    
+  };
+
+};
+
+
+
 //Funció integrada a RevDevEUI que envia els downlinks
 RevDevEUI();
+RevDevEUIdesac();
 
 //---------------------------
 
