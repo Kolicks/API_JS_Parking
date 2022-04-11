@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");//Servidor HTTP
 const axios = require("axios").default;//Client HTTP
+const schedule = require('node-schedule'); //Repetició Funció
 
 //Executem el servidor i client
 const app = express();
@@ -37,6 +38,31 @@ app.get("/", (req, res) => res.send(`
   </html>
 `));
 
+
+app.post("/provadb", async (req, res) =>{
+  const sql = 'INSERT INTO Sensor_Cotxe1 SET ?';
+  const cotxeObj = {
+    //Data: req.body.uplink_message.received_at,
+    Data: new Date(req.body.uplink_message.received_at),
+    DevEUI: req.body.end_device_ids.device_id,
+    Parking_status: req.body.uplink_message.decoded_payload.Parking_status,
+    Battery_Voltage: req.body.uplink_message.decoded_payload.Battery_Voltage,
+    Direction: req.body.uplink_message.decoded_payload.Direction,
+    Frame_type: req.body.uplink_message.decoded_payload.Frame_type,
+    Sens_type: req.body.uplink_message.decoded_payload.Sens_type,
+    Temp: req.body.uplink_message.decoded_payload.Temp,
+    X_Axis: req.body.uplink_message.decoded_payload.X_Axis,
+    Y_Axis: req.body.uplink_message.decoded_payload.Y_Axis,
+    Z_Axis: req.body.uplink_message.decoded_payload.Z_Axis,
+  }
+  //Guardem a la DB Sensor_Cotxe1
+  connection.query(sql, cotxeObj, error =>{
+  if (error) throw error;
+  console.log('Sensor cotxe rebut');
+  });
+  res.status(200).send();
+})
+
 //Post missatges rebuts de la API LoRa
 app.post("/sensor", async (req, res) =>{
 
@@ -47,7 +73,7 @@ app.post("/sensor", async (req, res) =>{
       //Preparem dades del sensor cotxe
       const sql = 'INSERT INTO Sensor_Cotxe SET ?';
       const cotxeObj = { 
-        Data: req.body.uplink_message.received_at,
+        Data: new Date(req.body.uplink_message.received_at),
         DevEUI: req.body.end_device_ids.device_id,
         Parking_status: req.body.uplink_message.decoded_payload.Parking_status,
         Battery_Voltage: req.body.uplink_message.decoded_payload.Battery_Voltage,
@@ -174,8 +200,12 @@ app.post("/downlink", async (req, res) =>{
 
 
 // Aquesta funció mira la taula on hi han registrats tots el Sensors i envia l'ordre per aquells necessaris d'activar el LED
+
 const BuffRev = setInterval(RevDevEUI, 30000);//Cada 30 segons
 const BuffRevDesac = setInterval(RevDevEUIdesac, 30000);//Cada 30 segons
+
+//const BuffRev = schedule.scheduleJob('15 * * * *', RevDevEUI);
+//const BuffRevDesac = schedule.scheduleJob('45 * * * *', RevDevEUIdesac); 
 
 //Funció que revisa i  crea la llista que envia els downlinks d'ACTIVACIÓ
 function RevDevEUI(){
