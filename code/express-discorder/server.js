@@ -1,13 +1,11 @@
 require("dotenv").config();
 const express = require("express");//Servidor HTTP
-const axios = require("axios").default;//Client HTTP
-const schedule = require('node-schedule'); //Repetició Funció
+const axios = require("axios").default;//Client HTTP per enviar al TTN
+//const schedule = require('node-schedule');
 
 //Executem el servidor i client
 const app = express();
 const port = 40300;
-
-const bodyParser = require('body-parser');
 
 //Base de dades MySQL
 var mysql      = require('mysql');
@@ -24,8 +22,9 @@ connection.connect(error => {
   console.log('Database server running!!!');
 });
 
-
+//Declara l'estructura de rebuda com a JSON
 app.use(express.json());
+
 
 //Pàgina principal
 app.get("/", (req, res) => res.send(`
@@ -38,7 +37,7 @@ app.get("/", (req, res) => res.send(`
   </html>
 `));
 
-
+// Base de dades de Proves, Trastejar aquí
 app.post("/provadb", async (req, res) =>{
   const sql = 'INSERT INTO Sensor_Cotxe1 SET ?';
   const cotxeObj = {
@@ -63,7 +62,7 @@ app.post("/provadb", async (req, res) =>{
   res.status(200).send();
 })
 
-//Post missatges rebuts de la API LoRa
+//Post missatges rebuts de la API LoRa, TTN V3
 app.post("/sensor", async (req, res) =>{
 
   //Mirem si és sensor Cotxe o actuador LED
@@ -176,7 +175,7 @@ app.post("/registre", async (req, res) =>{
 })
 
 
-//Prova downlink lora
+//Proves downlink lora
 // 1 = AQ== ------ 0 = AA==
 app.post("/downlink", async (req, res) =>{
   const sended = 'AA==';
@@ -196,7 +195,7 @@ app.post("/downlink", async (req, res) =>{
   res.status(200).send();
 })
 
-//----------Repetició--------
+//----------Repetició--------//
 
 
 // Aquesta funció mira la taula on hi han registrats tots el Sensors i envia l'ordre per aquells necessaris d'activar el LED
@@ -228,7 +227,7 @@ function RevDevEUI(){
 
 //Funció que mira si ja s'ha enviat Downlink o si el led està ACTIVAT
 function BufferSeleccio(index, llista){
-  let arrcotxe = []; // Array cotxes i leds assosiats
+  let arrcotxe = []; // Array cotxes
   let arrdwlnk = []; // Array leds
   let arrdate = []; // Array dates dels cotxes
   //Creem les llistes per buscar temps i preparar downlinks
@@ -355,10 +354,10 @@ function BufferSeleccioDesac(index, llista){
 RevDevEUI();
 RevDevEUIdesac();
 
-//---------------------------
+//---------------------------//
 
 
-
+// Errors de l'aplicació
 app.use((error, req, res, next) => {
   res.status(500)
   res.send({error: error})
@@ -366,6 +365,7 @@ app.use((error, req, res, next) => {
   next(error)
 })
 
+// Missatge d'avís, per la connexió del port
 app.listen(port, () =>
   console.log(`Example app listening at http://localhost:${port}`)
 );
