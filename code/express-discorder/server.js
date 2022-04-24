@@ -377,5 +377,5 @@ app.use((error, req, res, next) => {
 
 // Missatge d'avís, per la connexió del port
 app.listen(port, () =>
-  console.log(`Example app listening at http://localhost:${port}`)
+  console.log(`Aplicació executada a la direcicó http://localhost:${port}`)
 );
