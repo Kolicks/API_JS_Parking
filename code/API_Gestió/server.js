@@ -376,7 +376,7 @@ RevDevEUIdesac();
 //-----------------------------------------------//
 
 
-// Errors no seacrits a l'aplicació
+// Errors no descrits a l'aplicació
 app.use((error, req, res, next) => {
   res.status(500)
   res.send({error: error})
