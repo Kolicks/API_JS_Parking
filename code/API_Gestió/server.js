@@ -1,3 +1,12 @@
+///////////////////////////////////////////////////////////////////
+//                                                               //
+//                                                               //
+//                  API Gestió dels aparcaments                  //
+//                         Servidor UdG                          //
+//                                                               //
+///////////////////////////////////////////////////////////////////
+
+
 require("dotenv").config();
 const express = require("express");//Servidor HTTP
 const axios = require("axios").default;//Client HTTP per enviar al TTN
