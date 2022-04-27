@@ -196,7 +196,7 @@ app.post("/registre", async (req, res) =>{
 })
 
 
-//Downlink LoRa
+//Downlink LoRa Proves
 // 1 = AQ== ------ 0 = AA==
 app.post("/downlink", async (req, res) =>{
   const sended = 'AA==';
