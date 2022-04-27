@@ -264,7 +264,7 @@ function BufferSeleccio(index, llista){
     connection.query(sql, (error, result) =>{
       if (error) throw error;
       if (result.length > 0){
-        let index = result.length;
+        //let index = result.length;
         arrdate[i] = result[0].Data;
   
         const act = new Date(); // Hora actual
