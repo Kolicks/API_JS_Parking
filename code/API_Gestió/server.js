@@ -361,7 +361,7 @@ function BufferSeleccioDesac(index, llista){
     //Guardem a la DB Gestio_Cotxe
     connection.query(sql, error =>{
     if (error) throw error;
-    console.log('Downlink Desactivació pel actuador ' + arrdwlnk[i] + ' actualitzat');
+    console.log('Downlink Desactivació per l"actuador ' + arrdwlnk[i] + ' actualitzat');
     });    
   };
 
