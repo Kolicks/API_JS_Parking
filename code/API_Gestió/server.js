@@ -168,7 +168,7 @@ app.post("/registre", async (req, res) =>{
       });
     }
     else if ( c_cotxe == cotxe & c_led == led ) {
-      console.log('Sensor del cotxe i led registrats!');
+      console.log('El sensor del cotxe i led ja estan registrats!');
     }
     else if ( c_cotxe == cotxe & c_led != led ) {
       console.log('Sensor cotxe ja registrat!');
