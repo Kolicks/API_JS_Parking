@@ -7,7 +7,7 @@
 ///////////////////////////////////////////////////////////////////
 
 
-require("dotenv").config();
+require("dotenv").config(); // Ara per ara no necesari
 const express = require("express");//Servidor HTTP
 const axios = require("axios").default;//Client HTTP per enviar al TTN
 //const schedule = require('node-schedule');
