@@ -221,39 +221,31 @@ app.post("/downlink", async (req, res) =>{
 
 // Aquesta funció mira la taula on hi han registrats tots el Sensors i envia l'ordre per aquells necessaris d'activar el LED
 
-const BuffRev = setInterval(RevDevEUI, 5000);//Cada 30 segons
-const BuffRevDesac = setInterval(RevDevEUIdesac, 5000);//Cada 30 segons
+const BuffRev = setInterval(RevDevEUI, 30000);//Cada 30 segons
+const BuffRevDesac = setInterval(RevDevEUIdesac, 30000);//Cada 30 segons
 
 
 //Funció que revisa i  crea la llista que envia els downlinks d'ACTIVACIÓ
-async function RevDevEUI() {
+function RevDevEUI(){
+  let indxbuff = 0;
+  let arrsensor = [];
   const sql = 'SELECT * FROM Gestio_Cotxe WHERE Parking_Status = 1 AND Downlinks_sent = 0 AND Estat_led = 0 ';
-  connection.query(sql, async (error, result) =>{
+  connection.query(sql, (error, result) =>{
     if (error) throw error;
-    if (result.length > 0){ 
-        BufferSeleccio(await result.length, await result);
+    if (result.length > 0){
+      indxbuff = result.length;
+      arrsensor = result;
+      //console.log(arrsensor[0]);
+      //console.log(indxbuff);
+      //console.log(arrsensor);
     }
+    BufferSeleccio(indxbuff, arrsensor);
   });
-
-
-async function Mult(a,b){
-  return (a*b);
-}
-
-function Mult2(c){
-  console.log(c*2);
-}
-
-const mul = await Mult(3,2);
-
-Mult2(mul);
 
 };
 
 //Funció que mira si ja s'ha enviat Downlink o si el led està ACTIVAT
-async function BufferSeleccio(index, llista){
-  console.log(index);
-  console.log(llista);
+function BufferSeleccio(index, llista){
   let arrcotxe = []; // Array cotxes
   let arrdwlnk = []; // Array leds
   let arrdate = []; // Array dates dels cotxes
@@ -267,8 +259,6 @@ async function BufferSeleccio(index, llista){
 
   // Un cop sabem la llista dels sensors busquem quins han sobrepassat el temps
   for (let i = 0; i < index; i++) {
-    arrcotxe[i] = llista[i].DevEUI_cotxe; 
-    arrdwlnk[i] = llista[i].DevEUI_led;
     let eui = arrcotxe[i];
     const sql = 'SELECT Data FROM Sensor_Cotxe WHERE DevEUI = ' + mysql.escape(eui) + ' AND Parking_status = 1 ORDER BY Data DESC LIMIT 1';
     connection.query(sql, (error, result) =>{
@@ -326,20 +316,21 @@ async function BufferSeleccio(index, llista){
 
 // Funció que revisa i crea els downlinks de DESACTIVACIÓ
 //Aquesta funció no contempla el cas PS = 0 AND D_s = 1 AND E_l = 0 Espera que el LED dongui resposta E_l = 1
-async function RevDevEUIdesac() {
+function RevDevEUIdesac(){
   let indxbuff = 0;
   let arrsensor = [];
   const sql = 'SELECT * FROM Gestio_Cotxe WHERE Parking_Status = 0 AND Downlinks_sent = 1 AND Estat_led = 1 ';
-  connection.query(sql, async (error, result) =>{
+  connection.query(sql, (error, result) =>{
     if (error) throw error;
     if (result.length > 0){
-      indxbuff = await result.length;
-      arrsensor = await result;
-
+      indxbuff = result.length;
+      arrsensor = result;
+      //console.log(arrsensor[0]);
+      //console.log(indxbuff);
+      //console.log(arrsensor);
     }
-    return (indxbuff, arrsensor);
+    BufferSeleccioDesac(indxbuff, arrsensor);
   });
-  BufferSeleccioDesac(indxbuff, arrsensor);
 };
 
 //Funció eliminatòria i downlink desactivació
