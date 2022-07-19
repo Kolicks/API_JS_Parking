@@ -8,8 +8,11 @@
 
 
 require("dotenv").config(); // Ara per ara no necesari
+const { query } = require("express");
 const express = require("express");//Servidor HTTP
 const axios = require("axios").default;//Client HTTP per enviar al TTN
+const session = require('express-session');
+const path = require('path');
 //const schedule = require('node-schedule');
 
 //Executem el servidor i client
@@ -17,8 +20,8 @@ const app = express();
 const port = 40300;
 
 //Base de dades MySQL
-var mysql      = require('mysql');
-
+var mysql = require('mysql');
+let sql = ''; // Definició de la comanda MySQL
 var connection = mysql.createConnection({
   host     : 'localhost',
   user     : 'root',
@@ -32,12 +35,26 @@ connection.connect(error => {
 });
 
 //Declara l'estructura de rebuda com a JSON
+app.use(session({
+	secret: 'secret',
+	resave: true,
+	saveUninitialized: true
+}));
 app.use(express.json());
-
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'static')));
 
 //Pàgina principal
+  //Redirecció a login
+app.get("/", (req, res) => res.send(
+  res.redirect('/login')
+));
+  //Entrada a login
+app.get("/login", (req, res) =>  {// Responem a la petició del buscador web
+  res.sendFile(`${__dirname}/login.html`)
+});
 
-app.get("/", (req, res) => res.send(`
+app.get("/inici", (req, res) => res.send(`
   <html>
     <head><title>Success!</title></head>
     <body>
@@ -48,40 +65,21 @@ app.get("/", (req, res) => res.send(`
 `
 ));
 
-// Base de dades de Proves, Trastejar aquí
-app.post("/provadb", async (req, res) =>{
-  const sql = 'INSERT INTO Sensor_Cotxe1 SET ?';
-  const cotxeObj = {
-    //Data: req.body.uplink_message.received_at,
-    Data: new Date(req.body.uplink_message.received_at),
-    DevEUI: req.body.end_device_ids.device_id,
-    Parking_status: req.body.uplink_message.decoded_payload.Parking_status,
-    Battery_Voltage: req.body.uplink_message.decoded_payload.Battery_Voltage,
-    Direction: req.body.uplink_message.decoded_payload.Direction,
-    Frame_type: req.body.uplink_message.decoded_payload.Frame_type,
-    Sens_type: req.body.uplink_message.decoded_payload.Sens_type,
-    Temp: req.body.uplink_message.decoded_payload.Temp,
-    X_Axis: req.body.uplink_message.decoded_payload.X_Axis,
-    Y_Axis: req.body.uplink_message.decoded_payload.Y_Axis,
-    Z_Axis: req.body.uplink_message.decoded_payload.Z_Axis,
-  }
-  //Guardem a la DB Sensor_Cotxe1
-  connection.query(sql, cotxeObj, error =>{
-    if (error) throw error;
-    console.log('Sensor cotxe rebut');
-    });
+//Post USER
 
-  const sql2 = 'SELECT DevEUI FROM Sensor_Cotxe1 ORDER BY Data DESC LIMIT 5';
-  let variable = {};
-  connection.query(sql2, (error, result) =>{
+app.post("/auth", (req, res) =>{
+  console.log(req.body.username);
+  console.log(req.body.password);
+
+  sql = 'SELECT * FROM Users WHERE User = ' + req.body.username + 'AND Paraula =' + req.body.password;
+  connection.query(sql, async (error, result) =>{
     if (error) throw error;
-    variable = {result};
-    console.log('Sensor cotxe rebut');
-    res.status(200).send(variable);
-    });
-  console.log('------------------');
-  
+    if (result.length > 0){ 
+      res.redirect('/inici');
+    }
+  res.status(200).send();
 })
+
 
 //Post missatges rebuts de la API LoRa, TTN V3
 app.post("/sensor", async (req, res) =>{
@@ -91,7 +89,7 @@ app.post("/sensor", async (req, res) =>{
     let sensor = req.body.uplink_message.decoded_payload.Type_Sens;
     if (sensor == 1){
       //Preparem dades del sensor cotxe
-      const sql = 'INSERT INTO Sensor_Cotxe SET ?';
+      sql = 'INSERT INTO Sensor_Cotxe SET ?';
       const cotxeObj = { 
         Data: new Date(req.body.uplink_message.received_at),
         DevEUI: req.body.end_device_ids.device_id,
@@ -112,9 +110,9 @@ app.post("/sensor", async (req, res) =>{
       });
 
       //Actualitzem la Taula Gestio_Cotxe
-      const sql2 = 'UPDATE Gestio_Cotxe SET Parking_Status = ' + mysql.escape(cotxeObj.Parking_status) + ' WHERE DevEUI_cotxe =' + mysql.escape(cotxeObj.DevEUI);
+      sql = 'UPDATE Gestio_Cotxe SET Parking_Status = ' + mysql.escape(cotxeObj.Parking_status) + ' WHERE DevEUI_cotxe =' + mysql.escape(cotxeObj.DevEUI);
       //Guardem a la DB Gestio_Cotxe
-      connection.query(sql2, error =>{
+      connection.query(sql, error =>{
       if (error) throw error;
       console.log('Sensor cotxe ' + cotxeObj.DevEUI + ' actualitzat');
       });
@@ -126,7 +124,7 @@ app.post("/sensor", async (req, res) =>{
         const ledObj = { Estat_led: req.body.uplink_message.decoded_payload.LED }
         //console.log(ledObj);
         //Preparem dades del sensor cotxe
-        const sql = 'UPDATE Gestio_Cotxe SET Estat_led =' + mysql.escape(ledObj.Estat_led) + ' WHERE DevEUI_led =' + mysql.escape(ledEUI);
+        sql = 'UPDATE Gestio_Cotxe SET Estat_led =' + mysql.escape(ledObj.Estat_led) + ' WHERE DevEUI_led =' + mysql.escape(ledEUI);
         
         //Guardem a la Taula Gestio_Cotxe
         connection.query(sql, error =>{
@@ -140,7 +138,7 @@ app.post("/sensor", async (req, res) =>{
 })
 
 //Post Creació Postman dels sensors
-app.post("/registre", async (req, res) =>{
+/*app.post("/registre", async (req, res) =>{
 
   //Mirem si ja existeix
   let cotxe = req.body.EUICotxe;
@@ -193,7 +191,7 @@ app.post("/registre", async (req, res) =>{
   });
 
   res.status(200).send();
-})
+})*/
 
 
 //Downlink LoRa Proves
@@ -227,28 +225,15 @@ const BuffRevDesac = setInterval(RevDevEUIdesac, 5000);//Cada 30 segons
 
 //Funció que revisa i  crea la llista que envia els downlinks d'ACTIVACIÓ
 async function RevDevEUI() {
-  const sql = 'SELECT * FROM Gestio_Cotxe WHERE Parking_Status = 1 AND Downlinks_sent = 0 AND Estat_led = 0 ';
+  sql = 'SELECT * FROM Gestio_Cotxe WHERE Parking_Status = 1 AND Downlinks_sent = 0 AND Estat_led = 0 ';
   connection.query(sql, async (error, result) =>{
     if (error) throw error;
     if (result.length > 0){ 
-        BufferSeleccio(await result.length, await result);
+      BufferSeleccio(await result.length, await result);
     }
-  });
-
-
-async function Mult(a,b){
-  return (a*b);
-}
-
-function Mult2(c){
-  console.log(c*2);
-}
-
-const mul = await Mult(3,2);
-
-Mult2(mul);
-
+  })
 };
+
 
 //Funció que mira si ja s'ha enviat Downlink o si el led està ACTIVAT
 async function BufferSeleccio(index, llista){
@@ -258,12 +243,10 @@ async function BufferSeleccio(index, llista){
   let arrdwlnk = []; // Array leds
   let arrdate = []; // Array dates dels cotxes
   //Creem les llistes per buscar temps i preparar downlinks
-  for (let i = 0; i < index; i++) {
+  /*for (let i = 0; i < index; i++) {
     arrcotxe[i] = llista[i].DevEUI_cotxe; 
     arrdwlnk[i] = llista[i].DevEUI_led;
-  };
-
-  //console.log(arrcotxe);
+  };*/
 
   // Un cop sabem la llista dels sensors busquem quins han sobrepassat el temps
   for (let i = 0; i < index; i++) {
@@ -271,7 +254,7 @@ async function BufferSeleccio(index, llista){
     arrdwlnk[i] = llista[i].DevEUI_led;
     let eui = arrcotxe[i];
     const sql = 'SELECT Data FROM Sensor_Cotxe WHERE DevEUI = ' + mysql.escape(eui) + ' AND Parking_status = 1 ORDER BY Data DESC LIMIT 1';
-    connection.query(sql, (error, result) =>{
+    connection.query(sql, async (error, result) =>{
       if (error) throw error;
       if (result.length > 0){
         //let index = result.length;
@@ -285,9 +268,7 @@ async function BufferSeleccio(index, llista){
         
         //Mirem si han passat els minuts
         if (minuts > 1){
-          console.log('Downlink enviat');
-          //console.log(arrcotxe[i]);
-          //console.log(arrdwlnk[i]);
+
           const sended = 'AQ==';
           axios({
             headers: {'Authorization': 'Bearer NNSXS.5SFWX4EHPY67ECSZHX26BVPRIPDVN7ZZIZV77KA.DPW4CBGI3TU2GF3BOY2DY7OOWPKBCDFXLHTUONZFOLYNZE25AYZA',
@@ -299,47 +280,36 @@ async function BufferSeleccio(index, llista){
               "frm_payload": sended,
               "f_port": 15,
               "priority":"NORMAL"
-            }]
-            }
-
+            }]}
+            .catch(function (error) {
+              if (error) throw error;
+            })
           });
 
           //Finalment actualitzem el valor Downlink
-          const sql = 'UPDATE Gestio_Cotxe SET Downlinks_sent  = 1 WHERE DevEUI_led =' + mysql.escape(arrdwlnk[i]);
-        
+          sql = 'UPDATE Gestio_Cotxe SET Downlinks_sent  = 1 WHERE DevEUI_led =' + mysql.escape(arrdwlnk[i]);
           //Guardem a la DB Gestio_Cotxe
-          connection.query(sql, error =>{
+          connection.query(sql, async error =>{
           if (error) throw error;
           console.log('Downlink pel actuador ' + arrdwlnk[i] + ' actualitzat');
           });
-
-
         };
       }
     });
   }
-  
-  /*const date = new Date();
-  console.log(date -Date.now());*/
 
 };
 
 // Funció que revisa i crea els downlinks de DESACTIVACIÓ
 //Aquesta funció no contempla el cas PS = 0 AND D_s = 1 AND E_l = 0 Espera que el LED dongui resposta E_l = 1
 async function RevDevEUIdesac() {
-  let indxbuff = 0;
-  let arrsensor = [];
-  const sql = 'SELECT * FROM Gestio_Cotxe WHERE Parking_Status = 0 AND Downlinks_sent = 1 AND Estat_led = 1 ';
+  sql = 'SELECT * FROM Gestio_Cotxe WHERE Parking_Status = 0 AND Downlinks_sent = 1 AND Estat_led = 1 ';
   connection.query(sql, async (error, result) =>{
     if (error) throw error;
     if (result.length > 0){
-      indxbuff = await result.length;
-      arrsensor = await result;
-
+      BufferSeleccioDesac(await result.length,await result);
     }
-    return (indxbuff, arrsensor);
   });
-  BufferSeleccioDesac(indxbuff, arrsensor);
 };
 
 //Funció eliminatòria i downlink desactivació
@@ -366,21 +336,20 @@ function BufferSeleccioDesac(index, llista){
       }
     });
     //Finalment actualitzem el valor Downlink
-    const sql = 'UPDATE Gestio_Cotxe SET Downlinks_sent  = 0 WHERE DevEUI_led =' + mysql.escape(arrdwlnk[i]);
+    sql = 'UPDATE Gestio_Cotxe SET Downlinks_sent  = 0 WHERE DevEUI_led =' + mysql.escape(arrdwlnk[i]);
     //Guardem a la DB Gestio_Cotxe
     connection.query(sql, error =>{
     if (error) throw error;
     console.log('Downlink Desactivació per l"actuador ' + arrdwlnk[i] + ' actualitzat');
     });    
   };
-
 };
 
 
 
 //Funció integrada a RevDevEUI que envia els downlinks d'activació i RevDevEUIdesac per desactivacions
-RevDevEUI();
-RevDevEUIdesac();
+//RevDevEUI();
+//RevDevEUIdesac();
 
 //-----------------------------------------------//
 
@@ -394,6 +363,6 @@ app.use((error, req, res, next) => {
 })
 
 // Missatge d'avís, per la connexió del port
-app.listen(port, () =>
-  console.log(`Aplicació executada a la direcicó http://localhost:${port}`)
-);
+/*app.listen(port, () =>{
+    console.log(`Aplicació executada a la direcicó http://localhost:${port}`)
+})*/
