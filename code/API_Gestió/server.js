@@ -363,6 +363,6 @@ app.use((error, req, res, next) => {
 })
 
 // Missatge d'avís, per la connexió del port
-/*app.listen(port, () =>{
+app.listen(port, () =>{
     console.log(`Aplicació executada a la direcicó http://localhost:${port}`)
-})*/
+})
